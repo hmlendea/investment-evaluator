@@ -10,11 +10,14 @@ It calculates a buy confidence score based on these signals to help evaluate pot
 - Analyze one or multiple stock symbols via `Yahoo! Finance`
 - Adjustable scoring system based on:
   - RSI (adaptive per instrument type: stocks, ETFs, indices)
-  - MA200, MA50, EMA50
-  - MACD signal
-  - Rate of Change (ROC)
-  - Volume vs. average volume
-  - Price support zone
+  - MA200, MA50, EMA50, EMA200
+  - MACD signal (trend confirmation)
+  - Rate of Change (ROC – momentum indicator)
+  - Volume vs. 20-day average volume
+  - Price vs. recent support zone
+  - **Volatility (ATR)**
+  - **Golden Cross detection**
+  - **Bollinger Band compression**
 - Filter by:
   - Minimum score (`--min-score`)
   - Market status (open/closed) with `--ignore-closed`
