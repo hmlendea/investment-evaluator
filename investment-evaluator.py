@@ -25,7 +25,7 @@ def calculate_buy_confidence_score(data_frame, price, ma200, rsi14, instrument_t
     elif 0.88 <= ma200_ratio < 0.93:
         score += 1
 
-    # --- RSI scoring (0–3) adaptiv
+    # --- RSI scoring (0–3) + penalty if overbought
     if instrument_type == "ETF":
         if 35 <= rsi14 < 40:
             score += 3
@@ -45,6 +45,8 @@ def calculate_buy_confidence_score(data_frame, price, ma200, rsi14, instrument_t
             score += 2
         elif 40 <= rsi14 <= 45:
             score += 1
+    if rsi14 > 70:
+        score -= 1  # Potential overbought condition
 
     # --- Volume scoring (0–1)
     volume_ma20 = data_frame["Volume"].rolling(window=20).mean().iloc[-1]
@@ -52,20 +54,17 @@ def calculate_buy_confidence_score(data_frame, price, ma200, rsi14, instrument_t
     if current_volume >= volume_ma20:
         score += 1
 
-    # --- MA50 > MA200 scoring (0–1)
+    # --- Combined MA50 and EMA50 logic (0–1)
+    # Only score if both trend and recent momentum are aligned
     ma50_series = data_frame["Close"].rolling(window=50).mean()
     ma50 = ma50_series.iloc[-1]
-    if ma50 > ma200:
+    ema50 = data_frame["Close"].ewm(span=50).mean().iloc[-1]
+    if price > ema50 and ma50 > ma200:
         score += 1
 
     # --- Price above recent support (0–1)
     recent_low = data_frame["Close"].tail(10).min()
     if price > recent_low * 1.02:
-        score += 1
-
-    # --- EMA50 scoring (0–1)
-    ema50 = data_frame["Close"].ewm(span=50).mean().iloc[-1]
-    if price > ema50:
         score += 1
 
     # --- MACD signal (0–2)
@@ -85,24 +84,29 @@ def calculate_buy_confidence_score(data_frame, price, ma200, rsi14, instrument_t
     if price > ema200:
         score += 1
 
-    # --- ATR (0–1) – dacă volatilitatea e rezonabilă
-    atr = ta.volatility.AverageTrueRange(high=data_frame["High"],
-                                         low=data_frame["Low"],
-                                         close=data_frame["Close"],
-                                         window=14).average_true_range().iloc[-1]
-    if atr < price * 0.02:  # ATR < 2% din preț => volatilitate mică = +1
+    # --- ATR (0–1) – if volatility is reasonable
+    atr = ta.volatility.AverageTrueRange(
+        high=data_frame["High"],
+        low=data_frame["Low"],
+        close=data_frame["Close"],
+        window=14
+    ).average_true_range().iloc[-1]
+    atr_percent = atr / price
+    if 0.01 < round(atr_percent, 4) < 0.03:
         score += 1
 
-    # --- Golden Cross recent (0–1)
-    past_ma50 = ma50_series.shift(5).iloc[-1]
-    past_ma200 = data_frame["Close"].rolling(window=200).mean().shift(5).iloc[-1]
-    if past_ma50 < past_ma200 and ma50 > ma200:
-        score += 1
+    # --- Golden Cross recently (0–1)
+    if len(ma50_series.dropna()) > 5 and len(data_frame["Close"].rolling(window=200).mean().dropna()) > 5:
+        past_ma50 = ma50_series.shift(5).iloc[-1]
+        past_ma200 = data_frame["Close"].rolling(window=200).mean().shift(5).iloc[-1]
+        if past_ma50 < past_ma200 and ma50 > ma200:
+            score += 1
 
     # --- Bollinger Band width (0–1)
+    # Low BB width suggests volatility contraction — potential breakout (not directional)
     bb = ta.volatility.BollingerBands(close=data_frame["Close"], window=20, window_dev=2)
     band_width = (bb.bollinger_hband() - bb.bollinger_lband()) / data_frame["Close"]
-    if band_width.iloc[-1] < 0.05:  # <5% => compresie mare, posibil breakout
+    if band_width.iloc[-1] < 0.05:
         score += 1
 
     return score
