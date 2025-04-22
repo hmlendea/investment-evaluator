@@ -150,6 +150,11 @@ def get_recommendation(confidence_level):
     else:
         return "Do not buy"
 
+def generate_score_bar(score, max_score = 17):
+    filled = "▇" * score
+    empty = "░" * (max_score - score)
+    return filled + empty
+
 def get_market_state(stock_info):
     market_state = stock_info.get("marketState", "UNKNOWN")
 
@@ -249,12 +254,13 @@ def display_results(symbol, stock_info, price, ma200, rsi14, confidence_score):
     currency = stock_info.get("currency", "???")
     ma200_percent = (ma200 / price) * 100
     score_max = 17
+    score_bar = generate_score_bar(confidence_score, score_max)
 
     print_line(f"Analysis for the {market_state_colour}{market_state} &f{symbol} {instrument_type} &8({instrument_name})&r:")
     print_line(f"  Price: &f{price:.2f} &r{currency}")
     print_line(f"  MA200: &f{ma200:.2f} &r{currency} &8({ma200_percent:.2f}%)")
     print_line(f"  RSI14: &f{rsi14:.2f}")
-    print_line(f"  Score: &f{confidence_score}&8/{score_max}")
+    print_line(f"  Score: {confidence_colour}{score_bar} &8({confidence_score}/{score_max})")
 
     if rsi14 > 70:
         print_line(f"  &6⚠️ RSI is high! Asset might be overbought.")
