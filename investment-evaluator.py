@@ -111,28 +111,44 @@ def calculate_buy_confidence_score(data_frame, price, ma200, rsi14, instrument_t
 
     return score
 
-def get_formatted_recommendation(market_state, score):
-    if market_state == "Open":
-        if score >= 15:
-            recommendation = "Buy (Very High confidence)"
-            recommendation_colour = "&a"
-        elif score >= 13:
-            recommendation = "Buy (High confidence)"
-            recommendation_colour = "&2"
-        elif score >= 10:
-            recommendation = "Buy (Medium confidence)"
-            recommendation_colour = "&e"
-        elif score >= 7:
-            recommendation = "Buy (Low confidence)"
-            recommendation_colour = "&6"
-        else:
-            recommendation = "Do not buy"
-            recommendation_colour = "&c"
+def get_confidence_level(score):
+    if score >= 15:
+        return 4
+    elif score >= 13:
+        return 3
+    elif score >= 10:
+        return 2
+    elif score >= 7:
+        return 1
     else:
-        recommendation = "N/A (Closed market)"
-        recommendation_colour = "&r"
+        return 0
 
-    return f"{recommendation_colour}{recommendation}&r"
+def get_confidence_colour(confidence_level):
+    if confidence_level == 4:
+        return "&a"
+
+    if confidence_level == 3:
+        return "&2"
+
+    if confidence_level == 2:
+        return "&e"
+
+    if confidence_level == 1:
+        return "&6"
+
+    return "&c"
+
+def get_recommendation(confidence_level):
+    if confidence_level == 4:
+        return "Buy (Very High confidence)"
+    elif confidence_level == 3:
+        return "Buy (High confidence)"
+    elif confidence_level == 2:
+        return "Buy (Medium confidence)"
+    elif confidence_level == 1:
+        return "Buy (Low confidence)"
+    else:
+        return "Do not buy"
 
 def get_market_state(stock_info):
     market_state = stock_info.get("marketState", "UNKNOWN")
@@ -143,6 +159,14 @@ def get_market_state(stock_info):
         return "Pre-opening"
     else:
         return "Closed"
+
+def get_market_state_colour(market_state):
+    if market_state == 'Open':
+        return "&2"
+    elif market_state == 'Pre-opening':
+        return "&e"
+    else:
+        return "&c"
 
 def get_instrument_name(stock_info):
     long_name = stock_info.get("longName", "Unknown")
@@ -178,11 +202,11 @@ def get_yahoo_finance_symbol(symbol):
     symbol = symbol.upper()
 
     map = {
-        "LDO.IT": "LDO.MI",
         "VOW1.DE": "VOW3.DE"
     }
 
     symbol = symbol.replace(".FR", ".PA")
+    symbol = symbol.replace(".IT", ".MI")
     symbol = symbol.replace(".UK", ".L")
     symbol = symbol.replace(".US", "")
 
@@ -214,33 +238,33 @@ def analyse_symbol(symbol, period):
     if buy_confidence_score >= args.min_score:
         display_results(symbol, stock.info, price, ma200, rsi14, buy_confidence_score);
 
-def display_results(symbol, stock_info, price, ma200, rsi14, buy_confidence_score):
+def display_results(symbol, stock_info, price, ma200, rsi14, confidence_score):
     market_state = get_market_state(stock_info)
-    recommendation = get_formatted_recommendation(market_state, buy_confidence_score)
-
-    if market_state == 'Open':
-        market_state_colour = "&2"
-    elif market_state == 'Pre-opening':
-        market_state_colour = "&e"
-    else:
-        market_state_colour = "&c"
+    market_state_colour = get_market_state_colour(market_state)
+    confidence_level = get_confidence_level(confidence_score)
+    confidence_colour = get_confidence_colour(confidence_level)
 
     instrument_name = get_instrument_name(stock_info)
     instrument_type = get_instrument_type(stock_info)
     currency = stock_info.get("currency", "???")
     ma200_percent = (ma200 / price) * 100
+    score_max = 17
 
     print_line(f"Analysis for the {market_state_colour}{market_state} &f{symbol} {instrument_type} &8({instrument_name})&r:")
     print_line(f"  Price: &f{price:.2f} &r{currency}")
     print_line(f"  MA200: &f{ma200:.2f} &r{currency} &8({ma200_percent:.2f}%)")
     print_line(f"  RSI14: &f{rsi14:.2f}")
-    print_line(f"  Score: &f{buy_confidence_score}&r/17")
+    print_line(f"  Score: &f{confidence_score}&8/{score_max}")
 
     if rsi14 > 70:
         print_line(f"  &6⚠️ RSI is high! Asset might be overbought.")
 
-    print_line(f"  Recommendation: {recommendation}")
-
+    if market_state == 'Open':
+        recommendation = get_recommendation(confidence_level)
+        print_line(f"  Recommendation: {confidence_colour}{recommendation}")
+    else:
+        print_line(f"  Recommendation: N/A &8(Closed market)")
+    
 def print_line(message):
     message = message.replace("&r", "&7")
     message = message.replace("&2", "\033[32m")
