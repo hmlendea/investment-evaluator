@@ -38,7 +38,7 @@ def calculate_buy_confidence_score(data_frame, price, ma200, rsi14, instrument_t
             score += 2
         elif 42 <= rsi14 <= 50:
             score += 1
-    else:  # STC, default
+    else:
         if 30 <= rsi14 < 35:
             score += 3
         elif 35 <= rsi14 < 40:
@@ -53,7 +53,8 @@ def calculate_buy_confidence_score(data_frame, price, ma200, rsi14, instrument_t
         score += 1
 
     # --- MA50 > MA200 scoring (0–1)
-    ma50 = data_frame["Close"].rolling(window=50).mean().iloc[-1]
+    ma50_series = data_frame["Close"].rolling(window=50).mean()
+    ma50 = ma50_series.iloc[-1]
     if ma50 > ma200:
         score += 1
 
@@ -74,25 +75,50 @@ def calculate_buy_confidence_score(data_frame, price, ma200, rsi14, instrument_t
     if macd_line > signal_line:
         score += 2
 
-    # --- ROC (Rate of Change) scoring (0–1)
+    # --- ROC (0–1)
     roc = ta.momentum.ROCIndicator(close=data_frame["Close"], window=10).roc().iloc[-1]
-    if roc > 2:  # Momentum pozitiv puternic
+    if roc > 2:
+        score += 1
+
+    # --- EMA200 (0–1)
+    ema200 = data_frame["Close"].ewm(span=200).mean().iloc[-1]
+    if price > ema200:
+        score += 1
+
+    # --- ATR (0–1) – dacă volatilitatea e rezonabilă
+    atr = ta.volatility.AverageTrueRange(high=data_frame["High"],
+                                         low=data_frame["Low"],
+                                         close=data_frame["Close"],
+                                         window=14).average_true_range().iloc[-1]
+    if atr < price * 0.02:  # ATR < 2% din preț => volatilitate mică = +1
+        score += 1
+
+    # --- Golden Cross recent (0–1)
+    past_ma50 = ma50_series.shift(5).iloc[-1]
+    past_ma200 = data_frame["Close"].rolling(window=200).mean().shift(5).iloc[-1]
+    if past_ma50 < past_ma200 and ma50 > ma200:
+        score += 1
+
+    # --- Bollinger Band width (0–1)
+    bb = ta.volatility.BollingerBands(close=data_frame["Close"], window=20, window_dev=2)
+    band_width = (bb.bollinger_hband() - bb.bollinger_lband()) / data_frame["Close"]
+    if band_width.iloc[-1] < 0.05:  # <5% => compresie mare, posibil breakout
         score += 1
 
     return score
 
 def get_formatted_recommendation(market_state, score):
     if market_state == "Open":
-        if score >= 11:
+        if score >= 15:
             recommendation = "Buy (Very High confidence)"
             recommendation_colour = "&a"
-        elif score >= 9:
+        elif score >= 13:
             recommendation = "Buy (High confidence)"
             recommendation_colour = "&2"
-        elif score >= 7:
+        elif score >= 10:
             recommendation = "Buy (Medium confidence)"
             recommendation_colour = "&e"
-        elif score >= 5:
+        elif score >= 7:
             recommendation = "Buy (Low confidence)"
             recommendation_colour = "&6"
         else:
@@ -204,7 +230,7 @@ def display_results(symbol, stock_info, price, ma200, rsi14, buy_confidence_scor
     print_line(f"  Price: &f{price:.2f} &r{currency}")
     print_line(f"  MA200: &f{ma200:.2f} &r{currency} &8({ma200_percent:.2f}%)")
     print_line(f"  RSI14: &f{rsi14:.2f}")
-    print_line(f"  Score: &f{buy_confidence_score}&r/13")
+    print_line(f"  Score: &f{buy_confidence_score}&r/17")
 
     if rsi14 > 70:
         print_line(f"  &6⚠️ RSI is high! Asset might be overbought.")
