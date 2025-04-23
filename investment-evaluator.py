@@ -207,15 +207,24 @@ def get_yahoo_finance_symbol(symbol):
     symbol = symbol.upper()
 
     map = {
+        "AMZN.DE": "AMZ.DE",
+        "ELUXB.SE": "ELUX-B.ST",
+        "HMB.SE": "HM-B.ST",
+        "TSLA.DE": "TL0.DE",
         "VOW1.DE": "VOW3.DE"
     }
 
+    symbol = map.get(symbol, symbol).upper()
+
+    symbol = symbol.replace(".ES", ".MC")
     symbol = symbol.replace(".FR", ".PA")
     symbol = symbol.replace(".IT", ".MI")
+    symbol = symbol.replace(".NL", ".AS")
+    symbol = symbol.replace(".SE", ".ST")
     symbol = symbol.replace(".UK", ".L")
     symbol = symbol.replace(".US", "")
 
-    return map.get(symbol, symbol).upper()
+    return symbol
 
 def analyse_symbol(symbol, period):
     symbol = symbol.upper()
