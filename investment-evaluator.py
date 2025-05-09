@@ -208,8 +208,15 @@ def get_yahoo_finance_symbol(symbol):
 
     map = {
         "AMZN.DE": "AMZ.DE",
+        "B4B.DE": "B4B.BE",
         "ELUXB.SE": "ELUX-B.ST",
         "HMB.SE": "HM-B.ST",
+        "HYUD.DE": "HYU.BE",
+        "NDA.DK": "NDA-DK.CO",
+        "NDA.FI": "NDA-FI.HE",
+        "NDA.SE": "NDA-SE.ST",
+        "SAN1.ES": "SAN.MC",
+        "SWEDA.SE": "SWED-A.ST",
         "TSLA.DE": "TL0.DE",
         "VOW1.DE": "VOW3.DE"
     }
@@ -217,6 +224,7 @@ def get_yahoo_finance_symbol(symbol):
     symbol = map.get(symbol, symbol).upper()
 
     symbol = symbol.replace(".ES", ".MC")
+    symbol = symbol.replace(".FI", ".HE")
     symbol = symbol.replace(".FR", ".PA")
     symbol = symbol.replace(".IT", ".MI")
     symbol = symbol.replace(".NL", ".AS")
